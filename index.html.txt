@@ -1,0 +1,491 @@
+<title>Besteck Attendance</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column, phone first. Month switcher, four tabs, then cards. Teal accent on cool grey. */
+:root{
+  --bg:#eef2f3; --surface:#ffffff; --fg:#14201f; --muted:#5b6b6a; --line:#d5dddd;
+  --accent:#0e6b61; --accent-fg:#ffffff; --accent-soft:#d9efeb;
+  --warn:#8a5000; --warn-soft:#fdeccd; --bad:#b3261e; --bad-soft:#fbdcd9; --good:#17692f; --good-soft:#d8f0df;
+  --f-body:'IBM Plex Sans',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1514; --surface:#162120; --fg:#e6efee; --muted:#93a7a5; --line:#2a3b3a;
+    --accent:#4fc3b3; --accent-fg:#06211e; --accent-soft:#17302d;
+    --warn:#f0b35a; --warn-soft:#3a2a10; --bad:#ff8f86; --bad-soft:#3d1a18; --good:#7fd69a; --good-soft:#13301c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1514; --surface:#162120; --fg:#e6efee; --muted:#93a7a5; --line:#2a3b3a;
+  --accent:#4fc3b3; --accent-fg:#06211e; --accent-soft:#17302d;
+  --warn:#f0b35a; --warn-soft:#3a2a10; --bad:#ff8f86; --bad-soft:#3d1a18; --good:#7fd69a; --good-soft:#13301c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);
+  padding-block:14px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.brand{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:600}
+h1{margin:0;font-size:24px;line-height:1.2;font-weight:700;text-wrap:balance}
+h2{margin:0;font-size:17px;font-weight:700}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.month{display:flex;align-items:center;gap:6px}
+.month b{min-width:120px;text-align:center;font-size:16px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.ib{width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:18px;line-height:1}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);padding:4px;border-radius:10px}
+.tab{font-size:13px;border:0;background:transparent;padding:9px 2px;border-radius:7px;font-weight:600;color:var(--muted);min-width:0}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-fg)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.note{font-size:13px;color:var(--muted)}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:9px 14px;font-weight:600;min-height:40px}
+.btn.alt{background:transparent;color:var(--accent)}
+.btn.danger{background:transparent;border-color:var(--bad);color:var(--bad)}
+.btn.on{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.wlist{display:flex;flex-direction:column;gap:8px}
+.wrow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 8px;border:1px solid var(--line);border-radius:10px}
+.wrow.sel{border-color:var(--accent);background:var(--accent-soft)}
+.wname{flex:1 1 140px;min-width:0;text-align:left;background:transparent;border:0;padding:4px 2px;font-weight:600;font-size:15px}
+.wname:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.wst{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.wbtns{display:flex;gap:6px}
+.btn.sm{min-height:36px;padding:4px 12px}
+.daysbox{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.wblock .split h2{font-size:18px}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 9px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--bg)}
+td.n,th.n{text-align:right}
+tr.tot td{font-weight:700;border-bottom:0;background:var(--bg)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);border:1px solid var(--line);padding:4px;border-radius:10px}
+.seg .btn{border-color:transparent}
+textarea.cp{width:100%;min-height:120px;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:8px;font:12px/1.4 var(--f-mono)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.tab:focus-visible,.ib:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=time],input[type=number],input[type=text],input[type=date],select{height:40px;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:0 10px;width:100%;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center;min-width:0}
+.stat b{display:block;font-size:20px;line-height:1.2;font-family:var(--f-mono)}
+.stat span{font-size:12px;color:var(--muted)}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.chip.ok{background:var(--good-soft);color:var(--good)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.days{padding:0;gap:0;overflow:hidden}
+.day{display:grid;grid-template-columns:54px 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.day:last-child{border-bottom:0}
+.day.today{background:var(--accent-soft)}
+.day.sun{background:var(--bg)}
+.dt{text-align:center;line-height:1.2}
+.dt b{display:block;font-size:22px;font-family:var(--f-mono)}
+.dt span{font-size:14px;font-weight:700;color:var(--fg)}
+.day.sun .dt span{color:var(--bad)}
+.dbody{display:flex;flex-direction:column;gap:6px;min-width:0}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.calc{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.calc .mono{color:var(--fg)}
+.flags{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+.sunrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:34px}
+.big{font-size:30px;font-weight:700;font-family:var(--f-mono);line-height:1.1}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;border-bottom:1px dashed var(--line);padding:3px 0}
+.kv:last-child{border-bottom:0}
+.kv.tot{font-weight:700;border-bottom:0;border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
+.verdict{border-radius:8px;padding:10px 12px;font-weight:600}
+.verdict.ok{background:var(--good-soft);color:var(--good)}
+.verdict.bad{background:var(--bad-soft);color:var(--bad)}
+.wk{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.wk:last-child{border-bottom:0;padding-bottom:0}
+.split{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips .btn{min-height:34px;padding:5px 12px}
+@media (prefers-reduced-motion:no-preference){.tab,.btn{transition:background .15s,color .15s}}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+(function(){
+const KEY='bestack_hazri_v1';
+const pad=n=>String(n).padStart(2,'0');
+const ymd=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
+const dKey=dt=>ymd(dt.getFullYear(),dt.getMonth(),dt.getDate());
+const parse=ds=>{const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])};
+const addDays=(dt,n)=>new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+n);
+const today=new Date(), TK=dKey(today), TY=today.getFullYear(), TM=today.getMonth();
+const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const toMin=s=>{const p=s.split(':').map(Number);return p[0]*60+p[1]};
+const t12=m=>{const h=Math.floor(m/60),mi=m%60;return ((h%12)||12)+':'+pad(mi)+' '+(h<12?'AM':'PM')};
+const t24=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const hrs=x=>String(+x.toFixed(2));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SHIFT_START=540, SHIFT_END=1050, LUNCH=30, FULL=8;
+
+function seed(){
+  const y=TY,m=TM,td=today.getDate(),dim=new Date(y,m+1,0).getDate();
+  const workers=[
+    {id:'w1',name:'Gurpal Singh',salary:22000,noGrace:false},
+    {id:'w2',name:'Ramesh Kumar',salary:18000,noGrace:false},
+    {id:'w3',name:'Sukhdev Ram',salary:26000,noGrace:true}
+  ];
+  const records={}, advances=[];
+  let sun=0;
+  for(let d=7;d<td;d++){ if(new Date(y,m,d).getDay()===0){sun=d;break;} }
+  workers.forEach((w,i)=>{
+    let waived=false;
+    for(let d=1;d<td&&d<=dim;d++){
+      if(new Date(y,m,d).getDay()===0) continue;
+      const h=(((i+1)*2654435761 ^ (d*40503))>>>0)%100;
+      const k=w.id+'|'+ymd(y,m,d);
+      if(i===1&&sun&&(d===sun-3||d===sun-1)){records[k]={leave:true};continue;}
+      if(h<3){records[k]={leave:true};continue;}
+      const late=h<(i===2?30:16);
+      const inn=late?546+(h%20):540+(h%4);
+      const out=(h>=40&&h<58)?1140+(h%3)*30:1050+(h%3);
+      const r={in:t24(inn),out:t24(out)};
+      if(late&&i===0&&!waived){r.waive=true;waived=true;}
+      records[k]=r;
+    }
+  });
+  if(td>2) advances.push({id:'a1',workerId:'w1',date:ymd(y,m,Math.min(5,td-1)),amount:3000});
+  return {workers,records,advances,otMult:1,sample:true};
+}
+let S=null;
+try{S=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+if(!S||!S.workers) S=seed();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+
+/* ---------- hisaab ---------- */
+function dayCalc(w,r){
+  const a=toMin(r.in), b=toMin(r.out), grace=w.noGrace?0:5;
+  let ci;
+  if(a<=SHIFT_START+grace||r.waive) ci=SHIFT_START; else ci=Math.ceil(a/30)*30;
+  let co;
+  const f=Math.floor(b/30)*30;
+  co=(f+30-b<=grace)?f+30:f;
+  if(r.waive) co=Math.max(co,Math.min(Math.ceil(b/30)*30,SHIFT_END));
+  if(co<ci) co=ci;
+  const worked=Math.max(0,(co-ci-LUNCH)/60);
+  return {a:a,b:b,ci:ci,co:co,worked:worked,frac:Math.min(worked,FULL)/FULL,ot:Math.max(0,worked-FULL),late:ci>SHIFT_START&&ci>a};
+}
+function dayStatus(w,ds){
+  const dow=parse(ds).getDay();
+  if(dow===0) return {type:'sun'};
+  const r=S.records[w.id+'|'+ds];
+  if(r&&r.leave) return {type:'A',kind:'Leave'};
+  if(r&&r.absent) return {type:'A',kind:'Absent'};
+  if(r&&r.in&&r.out) return Object.assign({type:'P'},dayCalc(w,r));
+  if(ds>=TK) return {type:'pending'};
+  if(r&&(r.in||r.out)) return {type:'miss'};
+  return {type:'A',kind:'Absent'};
+}
+const isAbs=(w,dt)=>dayStatus(w,dKey(dt)).type==='A';
+function sundayCut(w,ds){
+  const dt=parse(ds); let n=0;
+  for(let i=1;i<=6;i++) if(isAbs(w,addDays(dt,-i))) n++;
+  return n>=2||(isAbs(w,addDays(dt,-1))&&isAbs(w,addDays(dt,1)));
+}
+function summary(w,y,m,upto){
+  const dim=new Date(y,m+1,0).getDate(), last=upto||dim, rate=w.salary/dim;
+  let P=0,A=0,LV=0,SP=0,SC=0,frac=0,ot=0,late=0,pend=0;
+  for(let d=1;d<=last;d++){
+    const ds=ymd(y,m,d), st=dayStatus(w,ds);
+    if(st.type==='sun'){ if(ds<=TK){ if(sundayCut(w,ds)) SC++; else SP++; } }
+    else if(st.type==='P'){P++;frac+=st.frac;ot+=st.ot;if(st.late)late++;}
+    else if(st.type==='A'){A++;if(st.kind==='Leave')LV++;}
+    else pend++;
+  }
+  const dayPay=frac*rate, sunPay=SP*rate, otPay=ot*(rate/FULL)*S.otMult, gross=dayPay+sunPay+otPay;
+  const mk=y+'-'+pad(m+1);
+  const adv=S.advances.filter(a=>a.workerId===w.id&&a.date.slice(0,7)===mk).reduce((s,a)=>s+a.amount,0);
+  return {rate:rate,P:P,A:A,LV:LV,SP:SP,SC:SC,ot:ot,late:late,pend:pend,dayPay:dayPay,sunPay:sunPay,otPay:otPay,gross:gross,adv:adv,net:gross-adv};
+}
+
+/* ---------- view state ---------- */
+const V={rep:'daily',repDate:TK,msg:null,copy:null,open:{},tab:'hazri',ym:[TY,TM],wid:S.workers[0]?S.workers[0].id:null,
+  adv:{wid:S.workers[0]?S.workers[0].id:null,date:TK,amount:''},confirm:null};
+const $app=document.getElementById('app');
+const cur=()=>S.workers.find(w=>w.id===V.wid)||S.workers[0];
+function fixIds(){
+  if(!S.workers.find(w=>w.id===V.wid)) V.wid=S.workers[0]?S.workers[0].id:null;
+  if(!S.workers.find(w=>w.id===V.adv.wid)) V.adv.wid=S.workers[0]?S.workers[0].id:null;
+}
+function setRec(wid,ds,patch){
+  const k=wid+'|'+ds, r=Object.assign({},S.records[k],patch);
+  Object.keys(r).forEach(x=>{if(r[x]===''||r[x]===false||r[x]==null) delete r[x];});
+  if(Object.keys(r).length) S.records[k]=r; else delete S.records[k];
+  save();
+}
+const wchips=(sel,act)=>S.workers.map(w=>'<button class="btn'+(w.id===sel?'':' alt')+'" data-act="'+act+'" data-id="'+w.id+'">'+esc(w.name)+'</button>').join('');
+const wopts=sel=>S.workers.map(w=>'<option value="'+w.id+'"'+(w.id===sel?' selected':'')+'>'+esc(w.name)+'</option>').join('');
+
+/* ---------- views ---------- */
+function head(){
+  const y=V.ym[0],m=V.ym[1];
+  return '<div class="top"><div><div class="brand">Besteck Engineering</div><h1>Attendance &amp; Salary</h1></div>'+
+   '<div class="month"><button class="ib" data-act="mprev" aria-label="Previous month">‹</button><b>'+MN[m]+' '+y+'</b><button class="ib" data-act="mnext" aria-label="Next month">›</button></div></div>'+
+   (S.sample?'<div class="banner">This is sample data. Clear it from the Workers tab and enter your own.</div>':'');
+}
+function tabsHtml(){
+  const T=[['hazri','Attendance'],['salary','Salary'],['adv','Advance'],['rep','Reports'],['work','Workers']];
+  return '<div class="tabs" role="tablist">'+T.map(t=>'<button class="tab" role="tab" data-act="tab" data-t="'+t[0]+'" aria-selected="'+(V.tab===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
+}
+function dayRow(w,y,m,d,rate){
+  const ds=ymd(y,m,d), dow=new Date(y,m,d).getDay(), st=dayStatus(w,ds), r=S.records[w.id+'|'+ds]||{};
+  let body='';
+  if(st.type==='sun'){
+    const cut=sundayCut(w,ds);
+    body='<div class="sunrow"><span>Sunday</span>'+(cut?'<span class="chip bad">Cut · 2 absences this week</span>':'<span class="chip ok">Paid</span>')+'</div>';
+  } else {
+    let chips='', calc='';
+    if(st.type==='P'){
+      chips+=st.frac>=1?'<span class="chip ok">P · '+hrs(Math.min(st.worked,FULL))+' h</span>'+(st.ot>0?' <span class="chip ok">Overtime '+hrs(st.ot)+' h</span>':''):'<span class="chip bad">A · '+hrs(st.worked)+' h worked</span>';
+      if(st.late) chips+=' <span class="chip warn">Late cut</span>';
+      if(r.waive) chips+=' <span class="chip">Waived</span>';
+      const pay=st.frac*rate+st.ot*(rate/FULL)*S.otMult;
+      calc='Counted: <span class="mono">'+t12(st.ci)+(st.ci!==st.a?' (actual '+t12(st.a)+')':'')+'</span> to <span class="mono">'+t12(st.co)+(st.co!==st.b?' (actual '+t12(st.b)+')':'')+'</span><br>Worked <span class="mono">'+hrs(st.worked)+'</span> h'+(st.ot>0?' · Overtime <span class="mono">'+hrs(st.ot)+'</span> h':'')+' · <span class="mono">'+inr(pay)+'</span>';
+    } else if(st.type==='A') chips='<span class="chip bad">'+st.kind+'</span>';
+    else if(st.type==='miss') chips='<span class="chip warn">In/Out incomplete</span>';
+    else chips='<span class="chip">Pending</span>';
+    body='<div class="split"><div>'+chips+'</div></div>'+
+      '<div class="times"><label class="field">In<input type="time" data-act="in" data-d="'+ds+'" data-w="'+w.id+'" value="'+(r.in||'')+'"></label>'+
+      '<label class="field">Out<input type="time" data-act="out" data-d="'+ds+'" data-w="'+w.id+'" value="'+(r.out||'')+'"></label></div>'+
+      (calc?'<div class="calc">'+calc+'</div>':'')+
+      '<div class="flags"><label class="chk"><input type="checkbox" data-act="waive" data-d="'+ds+'" data-w="'+w.id+'"'+(r.waive?' checked':'')+'> Waive late cut</label>'+
+      '<label class="chk"><input type="checkbox" data-act="leave" data-d="'+ds+'" data-w="'+w.id+'"'+(r.leave?' checked':'')+'> Leave</label></div><button class="btn'+(r.absent?' on':' danger')+'" data-act="absent" data-d="'+ds+'" data-w="'+w.id+'">'+(r.absent?'Absent · tap to undo':'Mark absent')+'</button>';
+  }
+  return '<div class="day'+(ds===TK?' today':'')+(dow===0?' sun':'')+'"><div class="dt"><b>'+d+'</b><span>'+WD[dow]+'</span></div><div class="dbody">'+body+'</div></div>';
+}
+function wblock(x,y,m,isCur,past,dim){
+  const last=isCur?today.getDate():(past?dim:0);
+  const sm=summary(x,y,m,last||undefined), rate=x.salary/dim;
+  let st='',btns='';
+  if(isCur){
+    const r=S.records[x.id+'|'+TK]||{}, s=dayStatus(x,TK);
+    if(s.type==='sun'){ st='<span class="chip">Sunday</span>'; }
+    else {
+      st=s.type==='A'?'<span class="chip bad">'+s.kind+'</span>':'<span class="note mono">In '+(r.in?t12(toMin(r.in)):'—')+' · Out '+(r.out?t12(toMin(r.out)):'—')+'</span>';
+      btns='<div class="wbtns"><button class="btn sm" data-act="rowin" data-id="'+x.id+'">In</button>'+
+        '<button class="btn sm alt" data-act="rowout" data-id="'+x.id+'">Out</button>'+
+        '<button class="btn sm '+(r.absent?'on':'danger')+'" data-act="rowabs" data-id="'+x.id+'">'+(r.absent?'Absent · undo':'Absent')+'</button></div>';
+    }
+  }
+  const open=!!V.open[x.id];
+  let days='';
+  if(open){ for(let d=last;d>=1;d--) days+=dayRow(x,y,m,d,rate); }
+  return '<div class="card wblock"><div class="split"><h2>'+esc(x.name)+'</h2>'+st+'</div>'+btns+
+    '<div class="stats"><div class="stat"><b>'+sm.P+'</b><span>Present</span></div><div class="stat"><b>'+sm.LV+'</b><span>Leave</span></div><div class="stat"><b>'+(sm.A-sm.LV)+'</b><span>Absent</span></div><div class="stat"><b>'+hrs(sm.ot)+'</b><span>OT hours</span></div></div>'+
+    '<div class="note">Daily rate <span class="mono">'+inr(rate)+'</span> ('+inr(x.salary)+' ÷ '+dim+' days)'+(x.noGrace?' · 5-min grace off':'')+'</div>'+
+    (last>0?'<div><button class="btn alt sm" data-act="togdays" data-id="'+x.id+'">'+(open?'Hide days':'Show all days')+'</button></div>':'')+
+    (open?'<div class="daysbox">'+days+'</div>':'')+'</div>';
+}
+function vHazri(){
+  if(!S.workers.length) return '<div class="card">Add a worker in the Workers tab first.</div>';
+  const y=V.ym[0],m=V.ym[1],dim=new Date(y,m+1,0).getDate();
+  const isCur=(y===TY&&m===TM), past=(y<TY)||(y===TY&&m<TM);
+  return (isCur?'<div class="note">Today · '+WD[today.getDay()]+', '+today.getDate()+' '+MN[TM].slice(0,3)+'</div>':'')+
+    S.workers.map(x=>wblock(x,y,m,isCur,past,dim)).join('');
+}
+function vSalary(){
+  const y=V.ym[0],m=V.ym[1], isCur=(y===TY&&m===TM), past=(y<TY)||(y===TY&&m<TM);
+  if(!S.workers.length) return '<div class="card">Add a worker first.</div>';
+  const last=isCur?today.getDate():(past?undefined:0);
+  let total=0,cards='';
+  S.workers.forEach(w=>{
+    const s=summary(w,y,m,last===0?1:last); total+=s.net;
+    cards+='<div class="wk"><div class="split"><h2>'+esc(w.name)+'</h2><span class="note mono">'+inr(w.salary)+' / month</span></div>'+
+     '<div class="big">'+inr(s.net)+'</div><div class="note">Salary payable'+(isCur?' (till today)':'')+'</div>'+
+     '<div><div class="kv"><span>Days present</span><span class="mono">'+s.P+'</span></div>'+
+     '<div class="kv"><span>Leave days</span><span class="mono">'+s.LV+'</span></div>'+
+     '<div class="kv"><span>Absent days</span><span class="mono">'+(s.A-s.LV)+'</span></div>'+
+     '<div class="kv"><span>Sundays paid / cut</span><span class="mono">'+s.SP+' / '+s.SC+'</span></div>'+
+     '<div class="kv"><span>Days with late cut</span><span class="mono">'+s.late+'</span></div>'+
+     '<div class="kv"><span>Day earnings</span><span class="mono">'+inr(s.dayPay)+'</span></div>'+
+     '<div class="kv"><span>Sunday earnings</span><span class="mono">'+inr(s.sunPay)+'</span></div>'+
+     '<div class="kv"><span>Overtime '+hrs(s.ot)+' h</span><span class="mono">'+inr(s.otPay)+'</span></div>'+
+     '<div class="kv"><span>Advance deducted</span><span class="mono">− '+inr(s.adv)+'</span></div>'+
+     '<div class="kv tot"><span>Payable</span><span class="mono">'+inr(s.net)+'</span></div></div></div>';
+  });
+  return '<div class="card"><div class="note">Total salary payable, all workers</div><div class="big">'+inr(total)+'</div></div><div class="card">'+cards+'</div>';
+}
+function vAdv(){
+  if(!S.workers.length) return '<div class="card">Add a worker first.</div>';
+  const A=V.adv, mk=A.date.slice(0,7);
+  const hist=S.advances.filter(a=>a.date.slice(0,7)===V.ym[0]+'-'+pad(V.ym[1]+1)).sort((a,b)=>a.date<b.date?1:-1);
+  return '<div class="card"><h2>Advance check</h2>'+
+   '<div class="field">Worker<div class="chips">'+wchips(A.wid,'advpick')+'</div></div>'+
+   '<label class="field">Show earnings up to this date<input type="date" id="advd" data-act="advd" value="'+A.date+'"></label>'+
+   '<div class="chips"><button class="btn alt" data-act="advset" data-day="15">Up to the 15th</button><button class="btn alt" data-act="advset" data-day="25">Up to the 25th</button><button class="btn alt" data-act="advset" data-day="0">Today</button></div>'+
+   '<label class="field">Advance requested (₹)<input type="number" inputmode="numeric" id="advAmt" min="0" value="'+esc(A.amount)+'" placeholder="e.g. 10000"></label>'+
+   '<div id="advRes"></div></div>'+
+   '<div class="card"><h2>Advances this month</h2>'+
+   (hist.length?hist.map(a=>{const w=S.workers.find(x=>x.id===a.workerId);return '<div class="kv"><span>'+esc(w?w.name:'—')+' · '+a.date.slice(8)+' '+MN[Number(a.date.slice(5,7))-1].slice(0,3)+', '+WD[parse(a.date).getDay()]+'</span><span><span class="mono">'+inr(a.amount)+'</span> <button class="btn danger" style="min-height:30px;padding:2px 10px" data-act="deladv" data-id="'+a.id+'">Remove</button></span></div>';}).join(''):'<div class="note">No advances recorded yet.</div>')+'</div>';
+}
+function advCalc(){
+  const w=S.workers.find(x=>x.id===V.adv.wid); if(!w||!V.adv.date) return null;
+  const p=V.adv.date.split('-').map(Number);
+  const s=summary(w,p[0],p[1]-1,p[2]);
+  const mk=V.adv.date.slice(0,7);
+  const given=S.advances.filter(a=>a.workerId===w.id&&a.date.slice(0,7)===mk&&a.date<=V.adv.date).reduce((t,a)=>t+a.amount,0);
+  return {w:w,earned:s.gross,given:given,avail:Math.max(0,s.gross-given)};
+}
+function updAdv(){
+  const el=document.getElementById('advRes'); if(!el) return;
+  const c=advCalc(); if(!c){el.innerHTML='';return;}
+  const amt=Number(V.adv.amount)||0, ok=amt>0&&amt<=c.avail+0.001;
+  let h='<div class="kv"><span>Earned from the 1st to the '+V.adv.date.slice(8)+'th ('+WD[parse(V.adv.date).getDay()]+')</span><span class="mono">'+inr(c.earned)+'</span></div>'+
+    '<div class="kv"><span>Advance already given</span><span class="mono">− '+inr(c.given)+'</span></div>'+
+    '<div class="kv tot"><span>Can be advanced now</span><span class="mono">'+inr(c.avail)+'</span></div>';
+  if(amt>0) h+=ok?'<div class="verdict ok" style="margin-top:10px">Eligible. '+inr(amt)+' is within the earned amount.</div>'
+                 :'<div class="verdict bad" style="margin-top:10px">Not eligible. '+inr(amt-c.avail)+' too much; at most '+inr(c.avail)+' can be given.</div>';
+  h+='<div style="margin-top:10px"><button class="btn'+(ok||amt<=0?'':' danger')+'" data-act="addadv"'+(amt>0?'':' disabled')+'>'+(ok||amt<=0?'Record advance':'Record anyway')+'</button></div>';
+  el.innerHTML=h;
+}
+function vWork(){
+  const y=V.ym[0],m=V.ym[1],dim=new Date(y,m+1,0).getDate();
+  const list=S.workers.map(w=>'<div class="wk"><div class="split"><h2>'+esc(w.name)+'</h2><span class="note mono">'+inr(w.salary/dim)+' / day</span></div>'+
+    '<label class="field">Monthly salary (₹)<input type="number" inputmode="numeric" data-act="sal" data-id="'+w.id+'" value="'+w.salary+'"></label>'+
+    '<label class="chk"><input type="checkbox" data-act="nog" data-id="'+w.id+'"'+(w.noGrace?' checked':'')+'> Turn off 5-minute grace for this worker (often late)</label>'+
+    (V.confirm==='del'+w.id?'<div class="row"><button class="btn danger" data-act="delw" data-id="'+w.id+'">Yes, remove</button><button class="btn alt" data-act="cancel">Cancel</button></div>':'<div><button class="btn danger" data-act="askdel" data-id="'+w.id+'">Remove worker</button></div>')+'</div>').join('');
+  return '<div class="card"><h2>Workers</h2>'+(list||'<div class="note">No workers yet.</div>')+'</div>'+
+   '<div class="card"><h2>New worker</h2><div class="row"><label class="field">Name<input type="text" id="nw-name" placeholder="Name"></label><label class="field">Monthly salary (₹)<input type="number" inputmode="numeric" id="nw-sal" placeholder="22000"></label></div><div><button class="btn" data-act="addw">Add worker</button></div></div>'+
+   '<div class="card"><h2>Overtime rate</h2><label class="field">One overtime hour pays, relative to a normal hour<select data-act="otm"><option value="1"'+(S.otMult===1?' selected':'')+'>1x</option><option value="1.5"'+(S.otMult===1.5?' selected':'')+'>1.5x</option><option value="2"'+(S.otMult===2?' selected':'')+'>2x</option></select></label><div class="note">Normal hourly rate = daily rate ÷ 8</div></div>'+
+   '<div class="card"><h2>Data</h2>'+
+   (V.confirm==='clear'?'<div class="row"><button class="btn danger" data-act="clearall">Yes, delete everything</button><button class="btn alt" data-act="cancel">Cancel</button></div>':'<div class="row"><button class="btn alt" data-act="askclear">Clear all data and start empty</button><button class="btn alt" data-act="reseed">Restore sample data</button></div>')+
+   '<div class="note">This data is stored only in the browser on this phone.</div></div>'+
+   '<div class="card"><h2>Face attendance</h2><div class="note">Marking attendance by recognising faces on the camera is the next step. It is not in this prototype.</div></div>';
+}
+function dayInfo(x,ds){
+  const dt=parse(ds), dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate(), rate=x.salary/dim, s=dayStatus(x,ds);
+  const o={name:x.name,status:'',inT:'—',outT:'—',worked:0,ot:0,pay:0,pres:false,abs:false};
+  if(s.type==='sun'){
+    if(ds>TK) o.status='Sunday'; else if(sundayCut(x,ds)) o.status='Sunday (cut)'; else {o.status='Sunday (paid)';o.pay=rate;}
+  } else if(s.type==='P'){
+    o.status='Present';o.pres=true;
+    o.inT=t12(s.ci)+(s.ci!==s.a?' (actual '+t12(s.a)+')':'');
+    o.outT=t12(s.co)+(s.co!==s.b?' (actual '+t12(s.b)+')':'');
+    o.worked=s.worked;o.ot=s.ot;o.pay=s.frac*rate+s.ot*(rate/FULL)*S.otMult;
+  } else if(s.type==='A'){o.status=s.kind;o.abs=true;}
+  else if(s.type==='miss') o.status='In/Out incomplete';
+  else o.status='Pending';
+  return o;
+}
+function monthRows(y,m){
+  const isCur=(y===TY&&m===TM), past=(y<TY)||(y===TY&&m<TM), last=isCur?today.getDate():(past?undefined:0);
+  return S.workers.map(x=>{const s=summary(x,y,m,last===0?1:last);return {name:x.name,P:s.P,LV:s.LV,AB:s.A-s.LV,SP:s.SP,SC:s.SC,ot:s.ot,gross:s.gross,adv:s.adv,net:s.net};});
+}
+function dayTitle(ds){const d=parse(ds);return WD[d.getDay()]+', '+d.getDate()+' '+MN[d.getMonth()]+' '+d.getFullYear();}
+function repText(){
+  if(V.rep==='daily'){
+    const rows=S.workers.map(x=>dayInfo(x,V.repDate));
+    let t='Daily report - '+dayTitle(V.repDate)+'\n';
+    rows.forEach(r=>{t+=r.name+': '+r.status+(r.pres?', In '+r.inT+', Out '+r.outT+', '+hrs(r.worked)+' h, OT '+hrs(r.ot)+' h':'')+', '+inr(r.pay)+'\n';});
+    t+='Present '+rows.filter(r=>r.pres).length+', Absent/Leave '+rows.filter(r=>r.abs).length+', Total '+inr(rows.reduce((a,r)=>a+r.pay,0));
+    return t;
+  }
+  const rows=monthRows(V.ym[0],V.ym[1]);
+  let t='Monthly report - '+MN[V.ym[1]]+' '+V.ym[0]+'\n';
+  rows.forEach(r=>{t+=r.name+': Present '+r.P+', Leave '+r.LV+', Absent '+r.AB+', Sundays paid '+r.SP+'/cut '+r.SC+', OT '+hrs(r.ot)+' h, Earned '+inr(r.gross)+', Advance '+inr(r.adv)+', Payable '+inr(r.net)+'\n';});
+  t+='Total payable '+inr(rows.reduce((a,r)=>a+r.net,0));
+  return t;
+}
+function vRep(){
+  if(!S.workers.length) return '<div class="card">Add a worker first.</div>';
+  const head='<div class="seg"><button class="btn'+(V.rep==='daily'?'':' alt')+'" data-act="repmode" data-m="daily">Daily report</button><button class="btn'+(V.rep==='monthly'?'':' alt')+'" data-act="repmode" data-m="monthly">Monthly report</button></div>';
+  let body='';
+  if(V.rep==='daily'){
+    const rows=S.workers.map(x=>dayInfo(x,V.repDate));
+    body='<div class="card"><h2>'+dayTitle(V.repDate)+'</h2><div class="row"><button class="btn alt sm" data-act="repprev">‹ Previous day</button><button class="btn alt sm" data-act="repnext">Next day ›</button></div>'+
+      '<label class="field">Date<input type="date" id="repd" data-act="repd" value="'+V.repDate+'"></label>'+
+      '<div class="tblwrap"><table><thead><tr><th>Worker</th><th>Status</th><th>In</th><th>Out</th><th class="n">Hours</th><th class="n">OT</th><th class="n">Pay</th></tr></thead><tbody>'+
+      rows.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+r.status+'</td><td class="mono">'+r.inT+'</td><td class="mono">'+r.outT+'</td><td class="n mono">'+hrs(r.worked)+'</td><td class="n mono">'+hrs(r.ot)+'</td><td class="n mono">'+inr(r.pay)+'</td></tr>').join('')+
+      '<tr class="tot"><td>Total</td><td>'+rows.filter(r=>r.pres).length+' present</td><td></td><td></td><td class="n mono">'+hrs(rows.reduce((a,r)=>a+r.worked,0))+'</td><td class="n mono">'+hrs(rows.reduce((a,r)=>a+r.ot,0))+'</td><td class="n mono">'+inr(rows.reduce((a,r)=>a+r.pay,0))+'</td></tr></tbody></table></div>';
+  } else {
+    const rows=monthRows(V.ym[0],V.ym[1]), sum=k=>rows.reduce((a,r)=>a+r[k],0);
+    body='<div class="card"><h2>'+MN[V.ym[1]]+' '+V.ym[0]+'</h2><div class="note">Change the month with the arrows at the top.</div>'+
+      '<div class="tblwrap"><table><thead><tr><th>Worker</th><th class="n">Present</th><th class="n">Leave</th><th class="n">Absent</th><th class="n">Sun paid/cut</th><th class="n">OT h</th><th class="n">Earned</th><th class="n">Advance</th><th class="n">Payable</th></tr></thead><tbody>'+
+      rows.map(r=>'<tr><td>'+esc(r.name)+'</td><td class="n mono">'+r.P+'</td><td class="n mono">'+r.LV+'</td><td class="n mono">'+r.AB+'</td><td class="n mono">'+r.SP+' / '+r.SC+'</td><td class="n mono">'+hrs(r.ot)+'</td><td class="n mono">'+inr(r.gross)+'</td><td class="n mono">'+inr(r.adv)+'</td><td class="n mono">'+inr(r.net)+'</td></tr>').join('')+
+      '<tr class="tot"><td>Total</td><td class="n mono">'+sum('P')+'</td><td class="n mono">'+sum('LV')+'</td><td class="n mono">'+sum('AB')+'</td><td class="n mono">'+sum('SP')+' / '+sum('SC')+'</td><td class="n mono">'+hrs(sum('ot'))+'</td><td class="n mono">'+inr(sum('gross'))+'</td><td class="n mono">'+inr(sum('adv'))+'</td><td class="n mono">'+inr(sum('net'))+'</td></tr></tbody></table></div>';
+  }
+  const cp='<div class="row"><button class="btn" data-act="copyrep">Copy report as text</button></div>'+(V.msg?'<div class="note">'+V.msg+'</div>':'')+(V.copy?'<textarea class="cp" id="cptxt" readonly>'+esc(V.copy)+'</textarea>':'');
+  return head+body+'<div class="card">'+cp+'<div class="note">Copy it, then paste into WhatsApp or a message.</div></div>';
+}
+function render(){
+  fixIds();
+  const v={hazri:vHazri,salary:vSalary,adv:vAdv,rep:vRep,work:vWork}[V.tab]();
+  $app.innerHTML=head()+tabsHtml()+v;
+  if(V.tab==='adv') updAdv();
+}
+
+/* ---------- events ---------- */
+function nowMin(){const n=new Date();return t24(n.getHours()*60+n.getMinutes());}
+$app.addEventListener('click',function(e){
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  const a=b.dataset.act, w=(b.dataset.w&&S.workers.find(x=>x.id===b.dataset.w))||cur();
+  if(a!=='copyrep'){V.msg=null;V.copy=null;}
+  if(a==='tab'){V.tab=b.dataset.t;V.confirm=null;}
+  else if(a==='repmode'){V.rep=b.dataset.m;}
+  else if(a==='repprev'||a==='repnext'){V.repDate=dKey(addDays(parse(V.repDate),a==='repnext'?1:-1));}
+  else if(a==='copyrep'){const t=repText();let done=false;try{navigator.clipboard.writeText(t).then(function(){V.msg='Copied.';render();},function(){V.copy=t;V.msg='Select the text below and copy it.';render();});done=true;}catch(err){} if(!done){V.copy=t;V.msg='Select the text below and copy it.';} else return;}
+  else if(a==='mprev'||a==='mnext'){let y=V.ym[0],m=V.ym[1]+(a==='mnext'?1:-1);if(m<0){m=11;y--;}if(m>11){m=0;y++;}V.ym=[y,m];}
+  else if(a==='absent'&&w){const ds=b.dataset.d,rr=S.records[w.id+'|'+ds]||{};setRec(w.id,ds,rr.absent?{absent:false}:{absent:true,leave:false,in:'',out:'',waive:false});}
+  else if(a==='togdays'){V.open[b.dataset.id]=!V.open[b.dataset.id];}
+  else if(a==='wpick'){V.wid=b.dataset.id;}
+  else if(a==='rowin'){V.wid=b.dataset.id;setRec(b.dataset.id,TK,{in:nowMin(),leave:false,absent:false});}
+  else if(a==='rowout'){V.wid=b.dataset.id;setRec(b.dataset.id,TK,{out:nowMin(),leave:false,absent:false});}
+  else if(a==='rowabs'){V.wid=b.dataset.id;const rr=S.records[b.dataset.id+'|'+TK]||{};setRec(b.dataset.id,TK,rr.absent?{absent:false}:{absent:true,leave:false,in:'',out:'',waive:false});}
+  else if(a==='advpick'){V.adv.wid=b.dataset.id;}
+  else if(a==='nowin'&&w){setRec(w.id,TK,{in:nowMin(),leave:false,absent:false});}
+  else if(a==='nowout'&&w){setRec(w.id,TK,{out:nowMin(),leave:false,absent:false});}
+  else if(a==='advset'){const d=Number(b.dataset.day);let y=V.ym[0],m=V.ym[1];
+    if(d===0){V.adv.date=TK;} else {const dim=new Date(y,m+1,0).getDate();V.adv.date=ymd(y,m,Math.min(d,dim));}}
+  else if(a==='addadv'){const amt=Number(V.adv.amount)||0;if(amt>0&&V.adv.wid){S.advances.push({id:'a'+Date.now(),workerId:V.adv.wid,date:V.adv.date,amount:amt});V.adv.amount='';save();}}
+  else if(a==='deladv'){S.advances=S.advances.filter(x=>x.id!==b.dataset.id);save();}
+  else if(a==='addw'){const n=document.getElementById('nw-name').value.trim(),s=Number(document.getElementById('nw-sal').value);
+    if(n&&s>0){S.workers.push({id:'w'+Date.now(),name:n,salary:s,noGrace:false});save();}}
+  else if(a==='askdel'){V.confirm='del'+b.dataset.id;}
+  else if(a==='cancel'){V.confirm=null;}
+  else if(a==='delw'){const id=b.dataset.id;S.workers=S.workers.filter(x=>x.id!==id);Object.keys(S.records).forEach(k=>{if(k.indexOf(id+'|')===0)delete S.records[k];});S.advances=S.advances.filter(x=>x.workerId!==id);V.confirm=null;save();}
+  else if(a==='askclear'){V.confirm='clear';}
+  else if(a==='clearall'){S={workers:[],records:{},advances:[],otMult:S.otMult,sample:false};V.confirm=null;save();}
+  else if(a==='reseed'){S=seed();V.wid=S.workers[0].id;V.adv.wid=S.workers[0].id;save();}
+  render();
+});
+$app.addEventListener('change',function(e){
+  const t=e.target, a=t.dataset.act; if(!a) return; const w=(t.dataset.w&&S.workers.find(x=>x.id===t.dataset.w))||cur();
+  if(a==='wsel'){V.wid=t.value;}
+  else if(a==='in'||a==='out'){const p={};p[a]=t.value;p.leave=false;p.absent=false;setRec(w.id,t.dataset.d,p);}
+  else if(a==='waive'){setRec(w.id,t.dataset.d,{waive:t.checked});}
+  else if(a==='leave'){setRec(w.id,t.dataset.d,t.checked?{leave:true,absent:false,in:'',out:'',waive:false}:{leave:false});}
+  else if(a==='repd'){if(t.value)V.repDate=t.value;}
+  else if(a==='advw'){V.adv.wid=t.value;}
+  else if(a==='advd'){if(t.value) V.adv.date=t.value;}
+  else if(a==='sal'){const x=S.workers.find(q=>q.id===t.dataset.id);const v=Number(t.value);if(x&&v>0){x.salary=v;save();}}
+  else if(a==='nog'){const x=S.workers.find(q=>q.id===t.dataset.id);if(x){x.noGrace=t.checked;save();}}
+  else if(a==='otm'){S.otMult=Number(t.value);save();}
+  else return;
+  render();
+});
+$app.addEventListener('input',function(e){
+  if(e.target.id==='advAmt'){V.adv.amount=e.target.value;updAdv();}
+});
+render();
+window.__test={dayCalc:dayCalc,summary:summary,sundayCut:sundayCut,S:function(){return S;}};
+})();
+</script>
